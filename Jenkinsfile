@@ -47,13 +47,14 @@ pipeline {
             steps {
                 echo '=== STAGE 4: SECURITY SCAN ==='
                 sh """
-                    trivy image \
+                    docker run --rm \
+                        -v /var/run/docker.sock:/var/run/docker.sock \
+                        aquasec/trivy:latest image \
                         --format table \
                         --exit-code 0 \
                         --severity LOW,MEDIUM,HIGH,CRITICAL \
-                        ${IMAGE_NAME}:${IMAGE_TAG} > trivy-report.txt 2>&1 || true
+                        ${IMAGE_NAME}:${IMAGE_TAG} 2>&1 | tee trivy-report.txt || true
                 """
-                sh 'cat trivy-report.txt'
                 archiveArtifacts artifacts: 'trivy-report.txt'
                 echo 'Security scan complete - report saved!'
             }
@@ -93,8 +94,9 @@ pipeline {
                 echo '=== STAGE 7: MONITORING ==='
                 sh 'docker exec app-prod wget -q -O- http://localhost:3000/health'
                 sh 'docker exec app-prod wget -q -O- http://localhost:3000/'
+                sh 'docker exec app-prod wget -q -O- http://localhost:3000/metrics | head -5'
                 sh 'docker ps | grep app-prod'
-                echo 'All health checks passed - app is live!'
+                echo 'All health checks passed - app is live and monitored!'
             }
         }
     }
