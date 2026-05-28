@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites name="jest tests" tests="3" failures="0" errors="0" time="2.03">
+  <testsuite name="undefined" errors="0" failures="0" skipped="0" timestamp="2026-05-28T09:22:36" time="1.721" tests="3">
+    <testcase classname=" GET / returns welcome message" name=" GET / returns welcome message" time="0.07">
+    </testcase>
+    <testcase classname=" GET /health returns ok" name=" GET /health returns ok" time="0.011">
+    </testcase>
+    <testcase classname=" POST /todos creates a todo" name=" POST /todos creates a todo" time="0.043">
+    </testcase>
+  </testsuite>
+</testsuites>
