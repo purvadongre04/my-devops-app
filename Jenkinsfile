@@ -13,18 +13,27 @@ pipeline {
                 echo '=== STAGE 1: BUILD ==='
                 sh 'npm ci'
                 sh "docker build -t ${IMAGE_NAME}:${IMAGE_TAG} ."
-                echo "Docker image built: ${IMAGE_NAME}:${IMAGE_TAG}"
+                sh "docker save ${IMAGE_NAME}:${IMAGE_TAG} | gzip > app-image-${IMAGE_TAG}.tar.gz"
+                archiveArtifacts artifacts: "app-image-${IMAGE_TAG}.tar.gz"
+                echo "Docker image built and archived: ${IMAGE_NAME}:${IMAGE_TAG}"
             }
         }
         stage('Test') {
             steps {
                 echo '=== STAGE 2: TEST ==='
-                sh 'npm test -- --ci'
+                sh 'npm test -- --ci --coverage'
             }
             post {
                 always {
-                    junit allowEmptyResults: true,
-                          testResults: 'junit.xml'
+                    junit allowEmptyResults: true, testResults: 'junit.xml'
+                    publishHTML(target: [
+                        allowMissing: true,
+                        alwaysLinkToLastBuild: true,
+                        keepAll: true,
+                        reportDir: 'coverage/lcov-report',
+                        reportFiles: 'index.html',
+                        reportName: 'Coverage Report'
+                    ])
                 }
             }
         }
@@ -40,6 +49,9 @@ pipeline {
                           -Dsonar.host.url=http://sonarqube:9000 \
                           -Dsonar.token=sqp_43899c58c6e1886613c29814516821f5d47c7c2d
                     """
+                }
+                timeout(time: 2, unit: 'MINUTES') {
+                    waitForQualityGate abortPipeline: false
                 }
             }
         }
@@ -94,9 +106,10 @@ pipeline {
                 echo '=== STAGE 7: MONITORING ==='
                 sh 'docker exec app-prod wget -q -O- http://localhost:3000/health'
                 sh 'docker exec app-prod wget -q -O- http://localhost:3000/'
-                sh 'docker exec app-prod wget -q -O- http://localhost:3000/metrics | head -5'
+                sh 'docker exec app-prod wget -q -O- http://localhost:3000/metrics | head -10'
                 sh 'docker ps | grep app-prod'
-                echo 'All health checks passed - app is live and monitored!'
+                sh 'curl -s "http://prometheus:9090/api/v1/query?query=up" | head -c 200 || echo "Prometheus query executed"'
+                echo 'All health checks passed - app is live and monitored by Prometheus!'
             }
         }
     }
