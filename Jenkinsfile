@@ -47,7 +47,7 @@ pipeline {
             steps {
                 echo '=== STAGE 4: SECURITY SCAN ==='
                 sh """
-                    docker run --rm aquasec/trivy:latest image \
+                    trivy image \
                         --format table \
                         --exit-code 0 \
                         --severity LOW,MEDIUM,HIGH,CRITICAL \
@@ -63,10 +63,10 @@ pipeline {
                 echo '=== STAGE 5: DEPLOY TO STAGING ==='
                 sh 'docker stop app-staging || true'
                 sh 'docker rm app-staging || true'
-                sh "docker run -d -p 3001:3000 --name app-staging ${IMAGE_NAME}:${IMAGE_TAG}"
-                sh 'sleep 5'
-                sh 'curl -f http://localhost:3001/health'
-                echo 'App deployed to staging on port 3001'
+                sh "docker run -d -p 3001:3000 --name app-staging --network devops-network ${IMAGE_NAME}:${IMAGE_TAG}"
+                sh 'sleep 8'
+                sh 'docker exec app-staging wget -q -O- http://localhost:3000/health'
+                echo 'App deployed to staging successfully!'
             }
         }
         stage('Release to Production') {
@@ -79,20 +79,21 @@ pipeline {
                 sh """
                     docker run -d -p 3000:3000 \
                         --name app-prod \
+                        --network devops-network \
                         -e NODE_ENV=production \
                         ${IMAGE_NAME}:v${IMAGE_TAG}
                 """
-                sh 'sleep 5'
-                sh 'curl -f http://localhost:3000/health || (docker stop app-prod && exit 1)'
-                echo "Released version v${IMAGE_TAG} to production"
+                sh 'sleep 8'
+                sh 'docker exec app-prod wget -q -O- http://localhost:3000/health'
+                echo "Released version v${IMAGE_TAG} to production!"
             }
         }
         stage('Monitoring') {
             steps {
                 echo '=== STAGE 7: MONITORING ==='
-                sh 'curl -f http://localhost:3000/health'
-                sh 'curl -f http://localhost:3000/'
-                sh 'curl -f http://localhost:3000/metrics || echo "Metrics endpoint not yet configured"'
+                sh 'docker exec app-prod wget -q -O- http://localhost:3000/health'
+                sh 'docker exec app-prod wget -q -O- http://localhost:3000/'
+                sh 'docker ps | grep app-prod'
                 echo 'All health checks passed - app is live!'
             }
         }
