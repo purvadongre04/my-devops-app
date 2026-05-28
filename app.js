@@ -1,4 +1,7 @@
 const express = require('express');
+const client = require('prom-client');
+const collectDefaultMetrics = client.collectDefaultMetrics;
+collectDefaultMetrics();
 const app = express();
 app.use(express.json());
 
@@ -20,5 +23,8 @@ app.post('/todos', (req, res) => {
   todos.push(todo);
   res.status(201).json(todo);
 });
-
+app.get('/metrics', async (req, res) => {
+  res.set('Content-Type', client.register.contentType);
+  res.end(await client.register.metrics());
+});
 module.exports = app;
