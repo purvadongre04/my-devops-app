@@ -37,7 +37,8 @@ pipeline {
                           -Dsonar.projectKey=my-devops-app \
                           -Dsonar.sources=. \
                           -Dsonar.exclusions=node_modules/**,coverage/** \
-                          -Dsonar.host.url=http://sonarqube:9000
+                          -Dsonar.host.url=http://sonarqube:9000 \
+                          -Dsonar.token=sqp_43899c58c6e1886613c29814516821f5d47c7c2d
                     """
                 }
             }
